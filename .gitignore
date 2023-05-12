@@ -1,0 +1,7 @@
+__pycache__
+assets/
+config.json
+offering.csv
+database.db
+orders-undelivered.csv
+orders-update.csv
