@@ -92,6 +92,7 @@ def get_checkout():
 
         line_item = {
             'price_data': {
+                'tax_behavior': 'exclusive',
                 'currency': 'USD',
                 'product_data': {
                     'name': str(offer['name']),
@@ -116,7 +117,6 @@ def get_checkout():
                 cancel_url=config['DOMAIN'] + '/cancel',
                 line_items=line_items,
                 automatic_tax={'enabled': True},
-                tax_behavior='exclusive',
                 shipping_address_collection={'allowed_countries': config['SHIPPING_COUNTRIES']},
                 shipping_options=[
                     {'shipping_rate_data': {
@@ -138,8 +138,7 @@ def get_checkout():
                 success_url=config['DOMAIN'] + '/complete',
                 cancel_url=config['DOMAIN'] + '/cancel',
                 line_items=line_items,
-                automatic_tax={'enabled': True},
-                tax_behavior='exclusive'
+                automatic_tax={'enabled': True}
             )            
 
     except:
