@@ -120,6 +120,7 @@ def get_checkout():
                 shipping_address_collection={'allowed_countries': config['SHIPPING_COUNTRIES']},
                 shipping_options=[
                     {'shipping_rate_data': {
+                        'tax_behavior': 'exclusive',
                         'display_name': 'Amount',
                         'type': 'fixed_amount',
                         'fixed_amount': {
