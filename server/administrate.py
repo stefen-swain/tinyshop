@@ -1,3 +1,4 @@
+import stripe
 import os
 import csv
 import datetime as dt
@@ -88,9 +89,21 @@ if __name__ == "__main__":
 
     connection.close()
 
+    if len(undelivered_orders) > 0:
+
+        stripe.api_key = config['STRIPE_SECRET_KEY']
+
+        for undelivered_order in undelivered_orders:
+
+            if undelivered_order['cache_stripe_payment_status'] == 'paid':
+
+                session = stripe.checkout.Session.retrieve(undelivered_order['stripe_checkout_session_id'])
+
+                undelivered_order['cache_stripe_payment_intent'] = session['payment_intent']
+
     with open('orders-undelivered.csv', mode='w+') as undelivered_orders_csv:
 
-        csv_writer = csv.DictWriter(undelivered_orders_csv, fieldnames=['utc_datetime', 'id', 'stripe_checkout_session_id', 'cache_stripe_payment_status', 'offer_id', 'name', 'courier_delivery_id', 'cache_delivery_status'])
+        csv_writer = csv.DictWriter(undelivered_orders_csv, fieldnames=['utc_datetime', 'id', 'stripe_checkout_session_id', 'cache_stripe_payment_status', 'offer_id', 'name', 'courier_delivery_id', 'cache_delivery_status', 'cache_stripe_payment_intent'])
 
         csv_writer.writeheader()
 
