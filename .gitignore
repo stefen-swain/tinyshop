@@ -5,5 +5,5 @@ database.db
 orders-undelivered.csv
 orders-update.csv
 scratch/
-assets/*
-!assets/.gitkeep
+client/assets/*
+!.gitkeep
