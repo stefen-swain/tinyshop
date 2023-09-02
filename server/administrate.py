@@ -6,6 +6,7 @@ import json
 
 import database
 import queries
+import ship
 
 def get_config(file, config_variables):
 
@@ -19,9 +20,11 @@ def get_config(file, config_variables):
 
             raise Exception(f'{config_variable} configuration variable is not set in config.json; it must be set.')
 
-    if not isinstance(config['SHIPPING'], bool):
+    if 'USPS_ORIGINATION_ZIP' in config:
 
-        raise Exception(f'The SHIPPING config variable is not set to either true or false; it must be set to either true or false.')
+        if ship.is_text_length_digits(config['USPS_ORIGINATION_ZIP'], 5) is False:
+
+            raise Exception('The USPS_ORIGINATION_ZIP config variable is not five digits; it must be five digits.')
 
     return config
 
@@ -39,13 +42,33 @@ def get_column(matrix, column_name, value):
 
 if __name__ == "__main__":
 
-    config = get_config('config.json', ['DATABASE_FILENAME', 'OFFERING_FILENAME', 'ORDERS_UPDATE_FILENAME', 'DOMAIN', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_KEY', 'SHIPPING', 'SHIPPING_COUNTRIES', 'SHIPPING_AMOUNT'])
+    config = get_config('config.json', ['DATABASE_FILENAME', 'OFFERING_FILENAME', 'ORDERS_UPDATE_FILENAME', 'DOMAIN', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_KEY', 'SHIPPING_COUNTRIES', 'USPS_USER_ID', 'USPS_SERVICE', 'USPS_ORIGINATION_ZIP', 'USPS_CONTAINER'])
 
     connection = database.get_connection(config['DATABASE_FILENAME'])
 
     connection.execute(queries.create_offers)
 
     offering = get_matrix(config['OFFERING_FILENAME'])
+
+    for column in ['kilograms', 'metres1', 'metres2', 'metres3']:
+
+        for row in offering:
+
+            try:
+
+                value = float(row[column])
+
+            except:
+
+                exception = f'{column} of {row[column]} of row {row} cannot be converted to float; this is required.'
+
+                raise Exception(exception)
+
+            if value <= 0.0:
+
+                exception = f'{column} of {value} of row {row} is not greater than 0; it must be greater than 0.'
+
+                raise Exception(exception)
 
     get_column(matrix=offering, column_name='utc_datetime', value=dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'))
 
@@ -103,7 +126,7 @@ if __name__ == "__main__":
 
     with open('orders-undelivered.csv', mode='w+') as undelivered_orders_csv:
 
-        csv_writer = csv.DictWriter(undelivered_orders_csv, fieldnames=['utc_datetime', 'id', 'stripe_checkout_session_id', 'cache_stripe_payment_status', 'offer_id', 'name', 'courier_delivery_id', 'cache_delivery_status', 'cache_stripe_payment_intent'])
+        csv_writer = csv.DictWriter(undelivered_orders_csv, fieldnames=['utc_datetime', 'id', 'stripe_checkout_session_id', 'cache_stripe_payment_status', 'offer_id', 'kilograms', 'metres1', 'metres2', 'metres3', 'name', 'courier_delivery_id', 'cache_delivery_status', 'cache_stripe_payment_intent'])
 
         csv_writer.writeheader()
 

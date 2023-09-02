@@ -8,6 +8,10 @@ CREATE TABLE IF NOT EXISTS offers
 coordinates TEXT,
 utc_datetime TEXT,
 id INTEGER PRIMARY KEY AUTOINCREMENT,
+kilograms REAL,
+metres1 REAL,
+metres2 REAL,
+metres3 REAL,
 name TEXT,
 price REAL,
 classification TEXT,
@@ -18,7 +22,7 @@ classification_images TEXT
 '''
 
 insert_offer = '''
-INSERT INTO offers VALUES(:coordinates, :utc_datetime, :id, :name, :price, :classification, :classification_description, :classification_cover_image, :classification_images)
+INSERT INTO offers VALUES(:coordinates, :utc_datetime, :id, :kilograms, :metres1, :metres2, :metres3, :name, :price, :classification, :classification_description, :classification_cover_image, :classification_images)
 '''
 
 create_view_offering = '''
@@ -61,7 +65,7 @@ WHERE id = ?
 '''
 
 select_offering_offer_of_id = '''
-SELECT id, name, price, classification FROM offering
+SELECT id, kilograms, metres1, metres2, metres3, name, price, classification FROM offering
 WHERE id = ?
 LIMIT 1
 '''
@@ -116,7 +120,7 @@ WHERE id = :id
 '''
 
 select_not_delivered_orders = '''
-SELECT orders.utc_datetime, orders.id, stripe_checkout_session_id, cache_stripe_payment_status, offer_id, offers.name, courier_delivery_id, cache_delivery_status FROM orders
+SELECT orders.utc_datetime, orders.id, stripe_checkout_session_id, cache_stripe_payment_status, offer_id, offers.kilograms, offers.metres1, offers.metres2, offers.metres3, offers.name, courier_delivery_id, cache_delivery_status FROM orders
 LEFT JOIN offers ON orders.offer_id = offers.id
 WHERE (cache_delivery_status IS NOT 'delivered') AND (cache_delivery_status IS NOT 'canceled')
 '''

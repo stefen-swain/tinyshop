@@ -3,10 +3,12 @@ from waitress import serve
 import stripe
 import json
 import datetime as dt
+import requests
 
 import administrate
 import database
 import queries
+import ship
 
 def get_offering_offers(classification=None):
 
@@ -52,11 +54,17 @@ def get_checkout():
 
     try:
         
-        purchases = request.get_json()
+        response = request.get_json()
     
     except:
 
         return 'You did not POST a JSON body; this is required.', 400
+
+    if 'purchases' not in response:
+
+        return 'You did not POST a purchases key in the POST body JSON; this is required.', 400
+
+    purchases = response['purchases']
 
     if not isinstance(purchases, list):
 
@@ -71,6 +79,8 @@ def get_checkout():
         return 'You attempted to purchase more than 100 items in one session; you may not purchase more than 100 items in one session.', 400
 
     line_items = []
+
+    line_items_kilograms = 0.0
 
     for purchase in purchases:
 
@@ -107,40 +117,79 @@ def get_checkout():
 
         line_items.append(line_item)
 
+        line_items_kilograms = line_items_kilograms + float(offer['kilograms'])
+
+    if 'postal_code' not in response:
+
+        return 'You did not POST a postal_code key in the POST body JSON; this is required.', 400
+
     try:
 
-        if config['SHIPPING'] is True:
+        postal_code = str(response['postal_code']).strip()
 
-            checkout_session = stripe.checkout.Session.create(
-                mode='payment',
-                success_url=config['DOMAIN'] + '/complete',
-                cancel_url=config['DOMAIN'] + '/cancel',
-                line_items=line_items,
-                automatic_tax={'enabled': True},
-                shipping_address_collection={'allowed_countries': config['SHIPPING_COUNTRIES']},
-                shipping_options=[
-                    {'shipping_rate_data': {
-                        'tax_behavior': 'exclusive',
-                        'display_name': 'Amount',
-                        'type': 'fixed_amount',
-                        'fixed_amount': {
-                            'amount': config['SHIPPING_AMOUNT'],
-                            'currency': 'USD'
-                            }
+    except:
+
+        return 'The postal_code key in the POST body JSON could not be deserialized to type string; this is required.', 400
+
+    if ship.is_text_length_digits(postal_code, 5) is False:
+
+        return f'You POSTED the following postal_code: {postal_code}. It is not five digits. postal_code must be five digits.', 400
+
+    line_items_ounces = line_items_kilograms * 35.274
+
+    rate_response = requests.get(f'''
+    https://secure.shippingapis.com/ShippingAPI.dll?API=RateV4
+    &XML=<RateV4Request USERID="{config['USPS_USER_ID']}">
+        <Revision>2</Revision>
+        <Package ID="1">
+            <Service>{config['USPS_SERVICE']}</Service>
+            <ZipOrigination>{config['USPS_ORIGINATION_ZIP']}</ZipOrigination>
+            <ZipDestination>{postal_code}</ZipDestination>
+            <Pounds>0</Pounds>
+            <Ounces>{line_items_ounces}</Ounces>
+            <Container>{config['USPS_CONTAINER']}</Container>
+        </Package>
+    </RateV4Request>
+    ''')
+
+    if rate_response.status_code != 200:
+
+        return 'The United States Postal Service Web Tools API is not available; it is required to calculate shipping rate. Therefore, your order cannot be completed at this time.', 400
+
+    rate_text = rate_response.text
+
+    if ship.get_xml_tag_content(rate_text, '<Error>', '</Error>') is not False:
+
+        return f'The United States Postal Service Web Tools API responded with an error to our shipping rate request. Therefore, your order cannot be completed at this time.', 400
+
+    rate = ship.get_xml_tag_content(rate_text, '<Rate>', '</Rate>')
+
+    if rate is False:
+
+        return f'The United States Postal Service Web Tools API did not respond with a valid shipping rate. Therefore, your order cannot be completed at this time.', 400
+
+    try:
+
+        checkout_session = stripe.checkout.Session.create(
+            mode='payment',
+            success_url=config['DOMAIN'] + '/complete',
+            cancel_url=config['DOMAIN'] + '/cancel',
+            line_items=line_items,
+            automatic_tax={'enabled': True},
+            shipping_address_collection={'allowed_countries': config['SHIPPING_COUNTRIES']},
+            shipping_options=[
+                {'shipping_rate_data': {
+                    'tax_behavior': 'exclusive',
+                    'display_name': 'Amount',
+                    'type': 'fixed_amount',
+                    'fixed_amount': {
+                        'amount': int(float(rate)*100),
+                        'currency': 'USD'
                         }
                     }
-                ]
-            )
-
-        else:
-
-            checkout_session = stripe.checkout.Session.create(
-                mode='payment',
-                success_url=config['DOMAIN'] + '/complete',
-                cancel_url=config['DOMAIN'] + '/cancel',
-                line_items=line_items,
-                automatic_tax={'enabled': True}
-            )            
+                }
+            ]
+        )             
 
     except:
 
@@ -224,7 +273,7 @@ def get_event():
 
 if __name__ == "__main__":
 
-    config = administrate.get_config('config.json', ['DATABASE_FILENAME', 'OFFERING_FILENAME', 'ORDERS_UPDATE_FILENAME', 'DOMAIN', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_KEY', 'SHIPPING', 'SHIPPING_COUNTRIES', 'SHIPPING_AMOUNT'])
+    config = administrate.get_config('config.json', ['DATABASE_FILENAME', 'OFFERING_FILENAME', 'ORDERS_UPDATE_FILENAME', 'DOMAIN', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_KEY', 'SHIPPING_COUNTRIES', 'USPS_USER_ID', 'USPS_SERVICE', 'USPS_ORIGINATION_ZIP', 'USPS_CONTAINER'])
 
     stripe.api_key = config['STRIPE_SECRET_KEY']
 

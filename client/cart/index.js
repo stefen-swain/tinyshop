@@ -6,14 +6,17 @@ function empty() {
 
 }
 
-async function purchase(cart) {
+async function purchase(cart, postalCode) {
 
-    alert('You submitted a purchase attempt; please click OK and await the response.')
+    alert('You submitted a purchase attempt; please click OK and await the response.');
 
     let purchaseResponse = await fetch('/server/offering/purchases', {
         method: ['POST'],
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(cart)
+        body: JSON.stringify({
+            'purchases': cart,
+            'postal_code': postalCode 
+        })
     });
 
     if (!purchaseResponse.ok) {
@@ -64,6 +67,28 @@ function main() {
 
         }
 
+        postalCodeInput = document.createElement('input');
+
+        postalCodeInput.type = 'text';
+
+        postalCodeInput.id = 'postalCodeInput';
+
+        postalCodeInput.setAttribute('style', 'background-color: inherit; height: 25px; margin-top: 3px; margin-bottom: 10px; border: none; border-bottom: 1px solid #595959; outline: none; color: #595959; font-size: 14px;')
+
+        postalCodeInput.placeholder = 'required';
+
+        postalCodeInputLabel = document.createElement('label');
+
+        postalCodeInputLabel.setAttribute('for', 'postalCodeInput');
+
+        postalCodeInputLabel.setAttribute('style', 'margin-top: 20px; font-size: 14px; color: #595959;')
+
+        postalCodeInputLabel.innerHTML = 'Shipping Address 5-digit US Zip Code';
+
+        cartDiv.appendChild(postalCodeInputLabel);
+
+        cartDiv.appendChild(postalCodeInput);
+
         emptyButton = document.createElement('button');
 
         emptyButton.className = 'light-button';
@@ -84,7 +109,7 @@ function main() {
 
         purchaseButton.innerText = 'Checkout';
 
-        purchaseButton.addEventListener('mouseup', ()=>{purchase(cart);});
+        purchaseButton.addEventListener('mouseup', ()=>{purchase(cart, document.getElementById('postalCodeInput').value);});
 
         cartDiv.appendChild(purchaseButton);
 

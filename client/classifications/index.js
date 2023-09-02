@@ -12,7 +12,7 @@ async function main() {
 
         img.setAttribute('src', classification.classification_cover_image);
 
-        img.setAttribute('style', 'width: 65vw; max-width: 250px; margin-top: 30px;')
+        img.setAttribute('style', 'width: 65vw; max-width: 400px; margin-top: 30px;')
 
         classificationsDiv.appendChild(img);
 

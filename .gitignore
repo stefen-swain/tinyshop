@@ -3,6 +3,7 @@ config.json
 offering.csv
 database.db
 orders-undelivered.csv
+ship-orders-undelivered.csv
 orders-update.csv
 scratch/
 client/assets/*
